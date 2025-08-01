@@ -1,0 +1,14 @@
+
+config sefthy 'config'
+        option config_complete '0'
+        option selected_br 'null'
+        option token ''
+
+config sefthy 'version'
+        option version 'null'
+
+config sefthy 'user'
+        option password_hash 'null'
+        option first_login '1'
+
+config sefthy 'monitor'
