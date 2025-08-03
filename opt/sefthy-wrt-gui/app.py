@@ -6,6 +6,7 @@ from collections import deque
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
+from uci import Uci
 import subprocess
 import netifaces
 import threading
@@ -14,7 +15,6 @@ import zipfile
 import psutil
 import json
 import time
-import uci
 import os
 import re
 
@@ -28,6 +28,8 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SECURITY_PASSWORD_HASH'] = 'pbkdf2:sha256'
 app.config['SECURITY_PASSWORD_SALT'] = os.urandom(24)
 
+uci = Uci()
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -39,8 +41,8 @@ def login_required(f):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password_hash = uci.get('sefthy.user.password_hash')
-        first_login = uci.get('sefthy.user.first_login')
+        password_hash = uci.get('sefthy', 'user', 'password_hash')
+        first_login = uci.get('sefthy', 'user', 'first_login')
 
         if check_password_hash(password_hash, request.form['password']):
             session['user_id'] = 1
@@ -55,8 +57,8 @@ def login():
 def change_password():
     if request.method == 'POST':
         password_hash = generate_password_hash(request.form['new_password'], method='pbkdf2:sha256')
-        uci.set('sefthy.user.password_hash', password_hash)
-        uci.set('sefthy.user.first_login', '0')
+        uci.set('sefthy', 'user', 'password_hash', password_hash)
+        uci.set('sefthy', 'user', 'first_login', '0')
         uci.commit('sefthy')
         return redirect(url_for('index'))
     return render_template('change_password.html', get_message=get_message)
@@ -71,7 +73,7 @@ def index():
     connectorstatus = get_message( cpestatus['status'] )
     vpnstatus = cpestatus['vpn']
 
-    selected_bridge = uci.get('sefthy.config.selected_br')
+    selected_bridge = uci.get('sefthy', 'config', 'selected_br')
     bridge_status = None
     if selected_bridge != "null":
         bridge_status = get_bridge_status(selected_bridge)
@@ -83,7 +85,10 @@ def index():
         uptime = uptime.replace('ore', 'hours')
         uptime = uptime.replace('minuti', 'minutes')
 
-    token = uci.get('sefthy.config.token')
+    try:
+        token = uci.get('sefthy', 'config', 'token')
+    except Exception as e:
+        token = ''
 
     return render_template('index.html', 
                          uptime=uptime, 
@@ -229,12 +234,15 @@ def download_logs():
 @app.route('/token', methods=['GET', 'POST'])
 @login_required
 def token():
-    token = uci.get('sefthy.config.token')
+    try:
+        token = uci.get('sefthy', 'config', 'token')
+    except Exception as e:
+        token = ''
 
     if request.method == 'POST':
         new_token = request.form['token'].replace(' ', '')
         if new_token != token:
-            uci.set('sefthy.config.token', new_token)
+            uci.set('sefthy', 'config', 'token', new_token)
             uci.commit('sefthy')
             if os.path.exists('/opt/sefthy-wrt-config/.config_complete'):
                 os.remove('/opt/sefthy-wrt-config/.config_complete')
@@ -259,14 +267,14 @@ def network():
             flash('Selected bridge does not exist')
             return redirect(url_for('network'))
 
-        uci.set('sefthy.config.selected_br', selected_bridge_name)
+        uci.set('sefthy', 'config', 'selected_br', selected_bridge_name)
         uci.commit('sefthy')
 
         flash('Bridge selection saved successfully')
         return redirect(url_for('network'))
         
     available_bridges = get_available_bridges()
-    selected_bridge = uci.get('sefthy.config.selected_br')
+    selected_bridge = uci.get('sefthy', 'config', 'selected_br')
     selected_bridge_name = selected_bridge if selected_bridge != "null" else None
     
     return render_template('network.html',
@@ -277,7 +285,7 @@ def network():
 @app.route('/api/bridge_status')
 def bridge_status():
     available_bridges = get_available_bridges()
-    selected_bridge = uci.get('sefthy.config.selected_br')
+    selected_bridge = uci.get('sefthy', 'config', 'selected_br')
 
     return jsonify({
         'available_bridges': available_bridges,
@@ -371,15 +379,15 @@ def logout():
 
 def init_sefthy_config():
     with app.app_context():
-        result = uci.get('sefthy.user.password_hash')
+        result = uci.get('sefthy', 'user', 'password_hash')
         if result == "null":
             password_hash=generate_password_hash('Sefthy', method='pbkdf2:sha256')
-            uci.set('sefthy.user.password_hash', password_hash)
+            uci.set('sefthy', 'user', 'password_hash', password_hash)
             uci.commit('sefthy')
 
-        result = uci.get('sefthy.version.version')
+        result = uci.get('sefthy', 'version', 'version')
         if result == "null":
-            uci.set('sefthy.version.version', '1.0.0')
+            uci.set('sefthy', 'version', 'version', '1.0.0')
             uci.commit('sefthy')
 
 app.config['LANGUAGES'] = {
