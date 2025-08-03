@@ -11,7 +11,7 @@ for supported in $supported_versions; do
     fi
 done
 
-grep "NethSecurity" /etc/openwrt_release && is_supported=1
+grep "NethSecurity" /etc/openwrt_release >/dev/null && is_supported=1
 
 if [ $is_supported -eq 0 ]; then
     echo "WARNING: OpenWrt version $version has not been tested with SEFTHY."
@@ -30,12 +30,12 @@ if [ $is_supported -eq 0 ]; then
     esac
 fi
 
-wget https://static.sefthy.cloud/openwrt/sefthy.pub -O /tmp/sefthy.pub && 
+wget https://static.sefthy.cloud/openwrt/sefthy.pub -O /tmp/sefthy.pub >/dev/null && 
 opkg-key add /tmp/sefthy.pub && \
 sed -i '/^src\/gz sefthy/d' /etc/opkg/customfeeds.conf && \
 echo "src/gz sefthy https://static.sefthy.cloud/openwrt/x86_64" >> /etc/opkg/customfeeds.conf
 
-opkg update && 
+opkg update >/dev/null && 
 opkg install sefthy || exit 1
 
 grep "NethSecurity" /etc/openwrt_release >/dev/null || {

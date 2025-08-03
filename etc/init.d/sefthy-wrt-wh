@@ -6,6 +6,7 @@ STOP=01
 IF="sefthy_wg"
 
 start_service() {
+    return 0
     procd_open_instance
     procd_set_param command /usr/bin/python /opt/sefthy-wrt-wh/app.py
     procd_set_param respawn

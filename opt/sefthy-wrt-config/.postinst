@@ -3,4 +3,4 @@
 echo "* * * * * /opt/sefthy-wrt-config/config.sh" >> /etc/crontabs/root
 /etc/init.d/cron reload
 
-( sleep 2; for svc in "sefthy-dr-bridge" "sefthy-wrt-velch" "sefthy-wrt-wh"; do /etc/init.d/$svc disable; sed -Ei '/^    return 0$/d' /etc/init.d/$svc; done ) 
+( sleep 2; for svc in "sefthy-dr-bridge" "sefthy-wrt-velch" "sefthy-wrt-wh"; do /etc/init.d/$svc disable; sed -Ei '/^    return 0$/d' /etc/init.d/$svc; done ) &
