@@ -43,43 +43,38 @@ config(){
     add_bridge=( `echo $PARAMS | jq .add_bridge` )
 
     mkdir -p /usr/share/nftables.d/chain-pre/input
-    echo -e "iifname \"sefthy\" accept\niifname \"sefthy-wg\" ip saddr $ptp_r/32 accept" > /usr/share/nftables.d/chain-pre/input/sefthy.nft
+    echo -e "iifname \"sefthy\" accept\niifname \"sefthy_wg\" ip saddr $ptp_r/32 accept" > /usr/share/nftables.d/chain-pre/input/sefthy.nft
     /etc/init.d/firewall reload
 
     /etc/init.d/sefthy-wrt-velch restart
     /etc/init.d/sefthy-wrt-velch enable
 
-    mkdir -p /etc/wireguard
-    cat > /etc/wireguard/sefthy-wg.conf <<SEF
-[Interface]
-MTU = 1412
-PostUp = /etc/init.d/sefthy-wrt-wh start
-PostDown = /etc/init.d/sefthy-wrt-wh stop
-ListenPort = 13231
-PrivateKey = $privkey
-Address = $ptp_l
-
-[Peer]
-PublicKey = $pubkey
-AllowedIPs = $network, $graylog
-Endpoint = $endpoint
-SEF
-
-    cat > vxlan.sh <<SEF
-#!/bin/bash
-
-echo N > /sys/module/vxlan/parameters/log_ecn_error
-ip link add sefthy type vxlan remote $ptp_r id $vniid dstport $vxport
-ip link set dev sefthy mtu 1362
-ip link set dev sefthy up
-SEF
-
-    chmod +x vxlan.sh
-    /etc/init.d/sefthy-vxlan enable
+    uci -q delete network.sefthy_wg
+    uci set network.sefthy_wg=interface
+    uci set network.sefthy_wg.proto="wireguard"
+    uci set network.sefthy_wg.mtu="1412"
+    uci set network.sefthy_wg.private_key="$privkey"
+    uci add_list network.sefthy_wg.addresses="$ptp_l"
     
-    /etc/init.d/sefthy-wg enable
-    /etc/init.d/sefthy-wg status && /etc/init.d/sefthy-wg restart || /etc/init.d/sefthy-wg start
-    bash vxlan.sh
+    uci -q delete network.sefthy_wg_srv
+    uci set network.sefthy_wg_srv=wireguard_sefthy_wg
+    uci set network.sefthy_wg_srv.public_key="$pubkey"
+    uci set network.sefthy_wg_srv.endpoint_host="$(echo $endpoint | cut -d':' -f1)"
+    uci set network.sefthy_wg_srv.endpoint_port="$(echo $endpoint | cut -d':' -f2)"
+    uci set network.sefthy_wg_srv.persistent_keepalive="30"
+    uci set network.sefthy_wg_srv.route_allowed_ips="1"
+    uci add_list network.sefthy_wg_srv.allowed_ips="$network"
+    uci add_list network.sefthy_wg_srv.allowed_ips="$graylog"
+    uci commit network
+    service network reload
+
+    uci -q delete network.sefthy
+    uci set network.sefthy=interface
+    uci set network.sefthy.proto="vxlan"
+    uci set network.sefthy.mtu="1362"
+    uci set network.sefthy.dst="$ptp_r"
+    uci set network.sefthy.port="$vxport"
+    uci set network.sefthy.vni="$vniid"
 
     sed -Ei "s/^GRAYLOG_IP.*$/GRAYLOG_IP=\"$graylog\"/g" /opt/sefthy-wrt-monitor/monitor.sh
 
@@ -124,6 +119,7 @@ SEF
   "disable")
     uci set network.$DEV.ports="`uci get network.$DEV.ports | sed 's/ sefthy//g'`"
     uci commit network && /etc/init.d/network reload
+    ifup sefthy
 
     /etc/init.d/sefthy-dr-bridge stop
     /etc/init.d/sefthy-dr-bridge disable

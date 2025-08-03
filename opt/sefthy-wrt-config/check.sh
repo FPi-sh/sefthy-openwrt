@@ -19,7 +19,7 @@ check_config(){
 }
 
 check_vpn(){
-    ip a show dev sefthy-wg >/dev/null 2>&1 && remote=$(sipcalc `ip a show dev sefthy-wg | grep 'inet' | cut -d: -f2 | awk '{print substr($2, 1, length($2)-3)}'`/31 | grep range | cut -d' ' -f3)
+    ip a show dev sefthy_wg >/dev/null 2>&1 && remote=$(sipcalc `ip a show dev sefthy_wg | grep 'inet' | cut -d: -f2 | awk '{print substr($2, 1, length($2)-3)}'`/31 | grep range | cut -d' ' -f3)
     ping -c 1 $remote >/dev/null 2>&1
     [ $? -eq 0 ] && {
         VPN=UP

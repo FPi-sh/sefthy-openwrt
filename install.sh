@@ -32,6 +32,7 @@ fi
 
 wget https://static.sefthy.cloud/openwrt/sefthy.pub -O /tmp/sefthy.pub && 
 opkg-key add /tmp/sefthy.pub && \
+sed -i '/^src\/gz sefthy/d' /etc/opkg/customfeeds.conf && \
 echo "src/gz sefthy https://static.sefthy.cloud/openwrt/x86_64" >> /etc/opkg/customfeeds.conf
 
 opkg update && 

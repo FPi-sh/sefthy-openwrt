@@ -77,5 +77,5 @@ def run_speedtest():
 
 if __name__ == '__main__':
     from waitress import serve
-    sefthywgip = ni.ifaddresses('sefthy-wg')[ni.AF_INET][0]['addr']
+    sefthywgip = ni.ifaddresses('sefthy_wg')[ni.AF_INET][0]['addr']
     serve(app, host=sefthywgip, port=8080)
