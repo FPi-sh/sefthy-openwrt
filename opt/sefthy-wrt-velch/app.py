@@ -1,12 +1,14 @@
-import requests
-import subprocess
-import tempfile
-import os
 from time import sleep
+import subprocess
+import requests
+import tempfile
+import uci
+import os
 
 
-TOKEN = subprocess.run(["uci", "-q", "get", "sefthy.config.token"], capture_output=True, text=True, check=True).stdout.strip()
-VERSION = subprocess.run(["uci", "-q", "get", "sefthy.version.version"], capture_output=True, text=True, check=True).stdout.strip()
+
+TOKEN = uci.get("sefthy.config.token")
+VERSION = uci.get("sefthy.version.version")
 
 URL = "console.sefthy.cloud"
 CONNECTOR_TYPE = "openwrt"
@@ -79,7 +81,9 @@ while True:
 
                     if proc.returncode == 0:
                         try:
-                            versionupdate = subprocess.run(f'uci set sefthy.version.version="{targetVersion}" && uci commit sefthy', shell=True, capture_output=True)
+                            uci.set('sefthy.version.version', targetVersion)
+                            uci.commit('sefthy')
+                            versionupdate = uci.get('sefthy.version.version')
                         except Exception as e:
                             print("Error:", e)
                             print({versionupdate})

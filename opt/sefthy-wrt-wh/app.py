@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
-import subprocess
 import netifaces as ni
+import subprocess
 import ipaddress
 import speedtest
+import uci
 
 app = Flask(__name__)
 
@@ -38,8 +39,8 @@ def get_macaddr():
         ipaddress.ip_address(ip)
     except ValueError:
         return jsonify({'error': 'Invalid IP address format'}), 400
-    
-    interface = subprocess.run('uci get sefthy.config.selected_br', shell=True, capture_output=True)
+
+    interface = uci.get('sefthy.config.selected_br')
     result = subprocess.run(f'arping -s 0.0.0.0 -c 1 -I {interface.stdout.decode("utf-8").strip()} {ip} | grep -oE "([0-9a-fA-F]{{2}}:){{5}}[0-9a-fA-F]{{2}}"', shell=True, capture_output=True)
 
     return jsonify({'exit_code': result.returncode,
@@ -48,7 +49,7 @@ def get_macaddr():
 
 @app.route('/3d9cb111-9955-41a3-9013-238787756ab0/dr-bridge-status', methods=['POST'])
 def dr_bridge_status():
-    interface = subprocess.run('uci get sefthy.config.selected_br', shell=True, capture_output=True)
+    interface = uci.get('sefthy.config.selected_br')
     result = subprocess.run([f'/usr/sbin/brctl show {interface.stdout.decode("utf-8").strip()} | grep sefthy'], shell=True, capture_output=True)
     if result.returncode == 0:
         return jsonify({

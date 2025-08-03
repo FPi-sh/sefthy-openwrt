@@ -14,6 +14,7 @@ import zipfile
 import psutil
 import json
 import time
+import uci
 import os
 import re
 
@@ -38,8 +39,8 @@ def login_required(f):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password_hash = subprocess.run('uci -q get sefthy.user.password_hash', capture_output=True, text=True, shell=True).stdout.strip()
-        first_login = subprocess.run('uci -q get sefthy.user.first_login', capture_output=True, text=True, shell=True).stdout.strip()
+        password_hash = uci.get('sefthy.user.password_hash')
+        first_login = uci.get('sefthy.user.first_login')
 
         if check_password_hash(password_hash, request.form['password']):
             session['user_id'] = 1
@@ -54,9 +55,9 @@ def login():
 def change_password():
     if request.method == 'POST':
         password_hash = generate_password_hash(request.form['new_password'], method='pbkdf2:sha256')
-        subprocess.run(f'uci -q set sefthy.user.password_hash=\'{password_hash}\'', capture_output=False, shell=True)
-        subprocess.run(f'uci -q set sefthy.user.first_login=0', capture_output=False, shell=True)
-        subprocess.run('uci -q commit sefthy', capture_output=True, shell=True)
+        uci.set('sefthy.user.password_hash', password_hash)
+        uci.set('sefthy.user.first_login', '0')
+        uci.commit('sefthy')
         return redirect(url_for('index'))
     return render_template('change_password.html', get_message=get_message)
 
@@ -69,8 +70,8 @@ def index():
     cpestatus = json.loads(subprocess.getoutput('/bin/bash /opt/sefthy-wrt-config/check.sh'))
     connectorstatus = get_message( cpestatus['status'] )
     vpnstatus = cpestatus['vpn']
-    
-    selected_bridge = subprocess.run('uci -q get sefthy.config.selected_br', capture_output=True, text=True, shell=True).stdout.strip()
+
+    selected_bridge = uci.get('sefthy.config.selected_br')
     bridge_status = None
     if selected_bridge != "null":
         bridge_status = get_bridge_status(selected_bridge)
@@ -82,8 +83,8 @@ def index():
         uptime = uptime.replace('ore', 'hours')
         uptime = uptime.replace('minuti', 'minutes')
 
-    token = subprocess.run('uci -q get sefthy.config.token', capture_output=True, text=True, shell=True).stdout.strip()
-        
+    token = uci.get('sefthy.config.token')
+
     return render_template('index.html', 
                          uptime=uptime, 
                          load=load, 
@@ -228,13 +229,13 @@ def download_logs():
 @app.route('/token', methods=['GET', 'POST'])
 @login_required
 def token():
-    token = subprocess.run('uci -q get sefthy.config.token', capture_output=True, text=True, shell=True).stdout.strip()
+    token = uci.get('sefthy.config.token')
 
     if request.method == 'POST':
         new_token = request.form['token'].replace(' ', '')
         if new_token != token:
-            subprocess.run(f'uci -q set sefthy.config.token=\'{new_token}\'', capture_output=False, shell=True)
-            subprocess.run('uci -q commit sefthy', capture_output=False, shell=True)
+            uci.set('sefthy.config.token', new_token)
+            uci.commit('sefthy')
             if os.path.exists('/opt/sefthy-wrt-config/.config_complete'):
                 os.remove('/opt/sefthy-wrt-config/.config_complete')
         return redirect(url_for('index'))
@@ -257,15 +258,15 @@ def network():
         if not bridge_exists:
             flash('Selected bridge does not exist')
             return redirect(url_for('network'))
-        
-        subprocess.run(f'uci -q set sefthy.config.selected_br={selected_bridge_name}', capture_output=False, shell=True)
-        subprocess.run('uci -q commit sefthy', capture_output=False, shell=True)
-        
+
+        uci.set('sefthy.config.selected_br', selected_bridge_name)
+        uci.commit('sefthy')
+
         flash('Bridge selection saved successfully')
         return redirect(url_for('network'))
         
     available_bridges = get_available_bridges()
-    selected_bridge = subprocess.run('uci -q get sefthy.config.selected_br', capture_output=True, text=True, shell=True).stdout.strip()
+    selected_bridge = uci.get('sefthy.config.selected_br')
     selected_bridge_name = selected_bridge if selected_bridge != "null" else None
     
     return render_template('network.html',
@@ -276,8 +277,8 @@ def network():
 @app.route('/api/bridge_status')
 def bridge_status():
     available_bridges = get_available_bridges()
-    selected_bridge = subprocess.run('uci -q get sefthy.config.selected_br', capture_output=True, text=True, shell=True).stdout.strip()
-    
+    selected_bridge = uci.get('sefthy.config.selected_br')
+
     return jsonify({
         'available_bridges': available_bridges,
         'selected_bridge': selected_bridge if selected_bridge != "null" else None
@@ -370,16 +371,16 @@ def logout():
 
 def init_sefthy_config():
     with app.app_context():
-        result = subprocess.run('uci -q get sefthy.user.password_hash', capture_output=True, text=True, shell=True).stdout.strip()
+        result = uci.get('sefthy.user.password_hash')
         if result == "null":
             password_hash=generate_password_hash('Sefthy', method='pbkdf2:sha256')
-            subprocess.run(f'uci -q set sefthy.user.password_hash=\'{password_hash}\'', capture_output=False, shell=True)
-            subprocess.run('uci -q commit sefthy', capture_output=False, shell=True)
+            uci.set('sefthy.user.password_hash', password_hash)
+            uci.commit('sefthy')
 
-        result = subprocess.run('uci -q get sefthy.version.version', capture_output=True, text=True, shell=True).stdout.strip()
+        result = uci.get('sefthy.version.version')
         if result == "null":
-            subprocess.run('uci -q set sefthy.version.version=1.0.0', capture_output=False, shell=True)
-            subprocess.run('uci -q commit sefthy', capture_output=False, shell=True)
+            uci.set('sefthy.version.version', '1.0.0')
+            uci.commit('sefthy')
 
 app.config['LANGUAGES'] = {
     'en': 'English',
