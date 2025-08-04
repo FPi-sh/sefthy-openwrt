@@ -65,8 +65,6 @@ config(){
     uci set network.sefthy_wg_srv.route_allowed_ips="1"
     uci add_list network.sefthy_wg_srv.allowed_ips="$network"
     uci add_list network.sefthy_wg_srv.allowed_ips="$graylog"
-    uci commit network
-    service network reload
 
     uci -q delete network.sefthy
     uci set network.sefthy=interface
@@ -75,6 +73,9 @@ config(){
     uci set network.sefthy.dst="$ptp_r"
     uci set network.sefthy.port="$vxport"
     uci set network.sefthy.vni="$vniid"
+
+    uci commit network
+    /etc/init.d/network reload
 
     sed -Ei "s/^GRAYLOG_IP.*$/GRAYLOG_IP=\"$graylog\"/g" /opt/sefthy-wrt-monitor/monitor.sh
 

@@ -30,7 +30,7 @@ if [ $is_supported -eq 0 ]; then
     esac
 fi
 
-wget https://static.sefthy.cloud/openwrt/sefthy.pub -O /tmp/sefthy.pub >/dev/null && 
+wget -nv https://static.sefthy.cloud/openwrt/sefthy.pub -O /tmp/sefthy.pub 2>/dev/null && \
 opkg-key add /tmp/sefthy.pub && \
 sed -i '/^src\/gz sefthy/d' /etc/opkg/customfeeds.conf && \
 echo "src/gz sefthy https://static.sefthy.cloud/openwrt/x86_64" >> /etc/opkg/customfeeds.conf
