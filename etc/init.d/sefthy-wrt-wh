@@ -3,16 +3,13 @@
 USE_PROCD=1
 START=99
 STOP=01
-IF="sefthy_wg"
 
 start_service() {
     return 0
-    procd_open_instance
+    ip link show dev sefthy_wg >/dev/null || return 0
+    procd_open_instance "sefthy-wrt-wh"
     procd_set_param command /usr/bin/python /opt/sefthy-wrt-wh/app.py
     procd_set_param respawn
-
-    procd_set_param interface "$IF"
-    procd_add_reload_interface_trigger "$IF"
 
     procd_set_param stdout 0
     procd_set_param stderr 1
@@ -25,8 +22,6 @@ stop_service() {
     [ -n "$pid" ] && kill $pid
 }
 
-reload_service() {
-    stop
-    sleep 1
-    start
+service_triggers() {
+    procd_add_interface_trigger "interface.*" "sefthy_wg" /etc/init.d/sefthy-wrt-wh restart
 }
